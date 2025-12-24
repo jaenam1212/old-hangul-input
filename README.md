@@ -84,6 +84,8 @@ function MyComponent() {
 
 #### 모달 모드 (버튼 클릭 시 열기)
 
+**기본 사용법 (외부 input에 입력):**
+
 ```jsx
 'use client';
 
@@ -126,6 +128,105 @@ export default function Home() {
       <input ref={inputRef} type="text" placeholder="옛한글을 입력하세요" />
       <button onClick={handleOpen}>옛한글 입력기 열기</button>
       {isOpen && <button onClick={handleClose}>닫기</button>}
+    </div>
+  );
+}
+```
+
+**모달 내부 입력창 사용 (target 없이):**
+
+```jsx
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { OldHangulInput } from 'old-hangul-input';
+
+export default function Home() {
+  const keyboardRef = (useRef < OldHangulInput) | (null > null);
+
+  useEffect(() => {
+    // target을 지정하지 않으면 모달 내부 입력창에 직접 입력됨
+    keyboardRef.current = new OldHangulInput({
+      mode: 'modal',
+      // target 없음 - 모달 내부 입력창 사용
+    });
+
+    return () => {
+      keyboardRef.current?.destroy();
+    };
+  }, []);
+
+  const handleOpen = () => {
+    keyboardRef.current?.open();
+  };
+
+  return (
+    <div>
+      <button onClick={handleOpen}>옛한글 입력기 열기</button>
+    </div>
+  );
+}
+```
+
+**모달 커스터마이징:**
+
+```jsx
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { OldHangulInput } from 'old-hangul-input';
+
+export default function Home() {
+  const keyboardRef = (useRef < OldHangulInput) | (null > null);
+
+  useEffect(() => {
+    keyboardRef.current = new OldHangulInput({
+      mode: 'modal',
+      modal: {
+        // 색상
+        backgroundColor: '#f5f5f5',
+        overlayColor: 'rgba(0, 0, 0, 0.7)',
+        textColor: '#333',
+        borderColor: '#ccc',
+        buttonColor: '#4CAF50',
+        buttonHoverColor: '#45a049',
+
+        // 닫기 버튼
+        closeButtonPosition: 'top-left', // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+        closeButtonSize: '40px',
+        closeButtonColor: '#ff0000',
+
+        // 크기
+        width: '90vw',
+        maxWidth: '1000px',
+        height: '80vh',
+        maxHeight: '600px',
+
+        // 글자 크기
+        fontSize: '18px',
+        titleFontSize: '20px',
+        buttonFontSize: '16px',
+        inputFontSize: '18px',
+
+        // 기타
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+      },
+    });
+
+    return () => {
+      keyboardRef.current?.destroy();
+    };
+  }, []);
+
+  const handleOpen = () => {
+    keyboardRef.current?.open();
+  };
+
+  return (
+    <div>
+      <button onClick={handleOpen}>옛한글 입력기 열기</button>
     </div>
   );
 }
@@ -184,10 +285,49 @@ font-family: 'Pretendard', 'YetHangul', '맑은고딕', '나눔고딕', '돋움'
 #### options
 
 - `mode: 'modal' | 'popup' | 'inline'` - 입력기 모드
-- `target: string | HTMLElement` - 입력 대상 요소 (선택자 또는 DOM 요소)
+- `target?: string | HTMLElement` - 입력 대상 요소 (선택자 또는 DOM 요소). 모달 모드에서 지정하지 않으면 모달 내부 입력창에 입력됨
 - `container?: string | HTMLElement` - 인라인 모드일 때 패널이 표시될 컨테이너
 - `onInsert?: (text: string) => void` - 텍스트가 삽입될 때 호출되는 콜백
 - `onCopy?: (text: string) => void` - 텍스트가 복사될 때 호출되는 콜백
+- `modal?: ModalCustomizationOptions` - 모달 커스터마이징 옵션 (modal 모드일 때만 적용)
+
+#### ModalCustomizationOptions
+
+모달 모드에서 사용 가능한 커스터마이징 옵션:
+
+- **색상**
+
+  - `backgroundColor?: string` - 모달 배경색 (기본: `#fff`)
+  - `overlayColor?: string` - 오버레이 배경색 (기본: `rgba(0, 0, 0, 0.5)`)
+  - `textColor?: string` - 텍스트 색상 (기본: `#1a1a1a`)
+  - `borderColor?: string` - 테두리 색상 (기본: `#ddd`)
+  - `buttonColor?: string` - 버튼 배경색 (기본: `#fff`)
+  - `buttonHoverColor?: string` - 버튼 hover 색상 (기본: `#f0f0f0`)
+
+- **닫기 버튼**
+
+  - `closeButtonPosition?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'` - 닫기 버튼 위치 (기본: `'top-right'`)
+  - `closeButtonSize?: string` - 닫기 버튼 크기 (기본: `'30px'`)
+  - `closeButtonColor?: string` - 닫기 버튼 색상 (기본: `#999`)
+
+- **크기**
+
+  - `width?: string` - 모달 너비 (기본: `'95vw'`)
+  - `maxWidth?: string` - 최대 너비 (기본: `'1200px'`)
+  - `height?: string` - 모달 높이
+  - `maxHeight?: string` - 최대 높이 (기본: `'90vh'`)
+
+- **글자 크기**
+
+  - `fontSize?: string` - 기본 글자 크기 (기본: `'16px'`)
+  - `titleFontSize?: string` - 섹션 제목 글자 크기 (기본: `'16px'`)
+  - `buttonFontSize?: string` - 버튼 글자 크기 (기본: `'14px'`)
+  - `inputFontSize?: string` - 입력창 글자 크기 (기본: `'16px'`)
+
+- **기타**
+  - `borderRadius?: string` - 모서리 둥글기 (기본: `'8px'`)
+  - `padding?: string` - 패딩 (기본: `'20px'`)
+  - `boxShadow?: string` - 그림자
 
 #### 메서드
 

@@ -15,7 +15,14 @@ export class OldHangulInput implements OldHangulInputInstance {
 
   constructor(options: OldHangulInputOptions) {
     this.options = options;
-    this.inputHandler = new InputHandler(options);
+
+    // target이 없어도 InputHandler를 생성 (모달 내부 입력창 사용 시)
+    if (options.target) {
+      this.inputHandler = new InputHandler(options);
+    } else {
+      // target이 없으면 임시로 생성 (Modal.open()에서 재생성됨)
+      this.inputHandler = new InputHandler({ ...options, target: document.body });
+    }
 
     // 모드에 따라 UI 초기화
     if (options.mode === 'modal') {
@@ -84,4 +91,3 @@ export default OldHangulInput;
 // 타입 export
 export * from './types';
 export * from './data/oldHangulData';
-

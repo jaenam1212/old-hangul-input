@@ -15,7 +15,9 @@ export class InputHandler implements IInputHandler {
   private lastInsertedLength: number = 0; // 마지막으로 삽입된 텍스트의 길이
 
   constructor(options: OldHangulInputOptions) {
-    this.initializeTarget(options.target);
+    if (options.target) {
+      this.initializeTarget(options.target);
+    }
     this.onInsert = options.onInsert;
     this.setupSelectionTracking();
   }

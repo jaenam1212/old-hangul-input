@@ -20,31 +20,90 @@ export class Modal {
     // 오버레이 생성
     this.overlay = document.createElement('div');
     this.overlay.className = 'old-hangul-modal-overlay';
-    
+
+    // 모달 커스터마이징 옵션
+    const modalOptions = this.options.modal || {};
+
     // 패널 생성
     const panelContainer = document.createElement('div');
     panelContainer.className = 'old-hangul-modal-panel';
-    
+
     // 닫기 버튼
     const closeBtn = document.createElement('button');
     closeBtn.className = 'old-hangul-modal-close';
     closeBtn.textContent = '×';
     closeBtn.addEventListener('click', () => this.close());
+
+    // 닫기 버튼 위치 설정
+    const closePosition = modalOptions.closeButtonPosition || 'top-right';
+    const closeBtnStyle: Partial<CSSStyleDeclaration> = {
+      position: 'absolute',
+      border: 'none',
+      background: 'transparent',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: '4px',
+    };
+
+    if (closePosition.includes('top')) {
+      closeBtnStyle.top = '10px';
+    } else {
+      closeBtnStyle.bottom = '10px';
+    }
+
+    if (closePosition.includes('left')) {
+      closeBtnStyle.left = '10px';
+      closeBtnStyle.right = 'auto';
+    } else {
+      closeBtnStyle.right = '10px';
+      closeBtnStyle.left = 'auto';
+    }
+
+    if (modalOptions.closeButtonSize) {
+      closeBtnStyle.width = modalOptions.closeButtonSize;
+      closeBtnStyle.height = modalOptions.closeButtonSize;
+    } else {
+      closeBtnStyle.width = '30px';
+      closeBtnStyle.height = '30px';
+    }
+
+    if (modalOptions.closeButtonColor) {
+      closeBtnStyle.color = modalOptions.closeButtonColor;
+    } else {
+      closeBtnStyle.color = '#999';
+    }
+
+    if (modalOptions.fontSize) {
+      closeBtnStyle.fontSize = modalOptions.fontSize;
+    } else {
+      closeBtnStyle.fontSize = '24px';
+    }
+
+    Object.assign(closeBtn.style, closeBtnStyle);
     panelContainer.appendChild(closeBtn);
-    
+
     // 상단 입력창 영역
     const inputSection = document.createElement('div');
     inputSection.className = 'old-hangul-modal-input-section';
-    
+
     const inputWrapper = document.createElement('div');
     inputWrapper.className = 'old-hangul-modal-input-wrapper';
-    
+
     this.modalInput = document.createElement('input');
     this.modalInput.type = 'text';
     this.modalInput.className = 'old-hangul-modal-input';
-    this.modalInput.readOnly = true;
-    this.modalInput.placeholder = '입력 내용이 여기에 표시됩니다';
-    
+
+    // target이 없거나 document.body인 경우 모달 내부 입력창에 직접 입력
+    const useModalInput = !this.options.target || this.options.target === document.body;
+    if (useModalInput) {
+      this.modalInput.placeholder = '옛한글을 입력하세요';
+    } else {
+      this.modalInput.readOnly = true;
+      this.modalInput.placeholder = '입력 내용이 여기에 표시됩니다';
+    }
+
     const copyBtn = document.createElement('button');
     copyBtn.className = 'old-hangul-modal-copy-btn';
     copyBtn.textContent = '복사';
@@ -53,23 +112,43 @@ export class Modal {
         this.copyToClipboard(this.modalInput.value);
       }
     });
-    
+
     inputWrapper.appendChild(this.modalInput);
     inputWrapper.appendChild(copyBtn);
     inputSection.appendChild(inputWrapper);
     panelContainer.appendChild(inputSection);
-    
+
     // InputPanel 컨테이너
     const panelContent = document.createElement('div');
     panelContainer.appendChild(panelContent);
-    
+
+    // target이 없거나 document.body인 경우 모달 내부 입력창을 target으로 사용
+    const actualTarget = useModalInput ? this.modalInput : this.options.target;
+
+    // target이 없거나 document.body인 경우 모달 내부 입력창을 target으로 사용하기 위해 InputHandler 재생성
+    let modalInputHandler = this.inputHandler;
+    if (useModalInput) {
+      modalInputHandler = new InputHandler({
+        ...this.options,
+        target: actualTarget,
+        onInsert: (text: string) => {
+          // 원래 콜백 호출
+          if (this.options.onInsert) {
+            this.options.onInsert(text);
+          }
+        },
+      });
+    }
+
     // 입력 동기화를 위한 수정된 옵션
     const syncOptions = {
       mode: this.options.mode || 'modal',
-      target: this.options.target,
+      target: actualTarget,
       onInsert: (text: string) => {
-        // 모달 입력창에 반영
-        this.updateModalInput();
+        // target이 외부인 경우에만 모달 입력창에 반영
+        if (!useModalInput) {
+          this.updateModalInput();
+        }
         // 원래 콜백 호출
         if (this.options.onInsert) {
           this.options.onInsert(text);
@@ -77,20 +156,19 @@ export class Modal {
       },
       onCopy: this.options.onCopy,
     };
-    
-    // target 입력창 변경 감지 (polling으로 동기화)
-    const syncInterval = setInterval(() => {
-      this.updateModalInput();
-    }, 100);
-    
-    // 모달이 닫힐 때 interval 정리
-    const originalClose = this.close.bind(this);
-    this.close = () => {
-      clearInterval(syncInterval);
-      originalClose();
-    };
-    
-    this.panel = new InputPanel(panelContent, this.inputHandler, syncOptions);
+
+    // target이 외부인 경우에만 입력창 변경 감지 (polling으로 동기화)
+    let syncInterval: NodeJS.Timeout | null = null;
+    if (!useModalInput) {
+      syncInterval = setInterval(() => {
+        this.updateModalInput();
+      }, 100);
+
+      // 모달이 닫힐 때 interval 정리를 위해 저장
+      (this as any).syncInterval = syncInterval;
+    }
+
+    this.panel = new InputPanel(panelContent, modalInputHandler, syncOptions);
 
     this.overlay.appendChild(panelContainer);
     document.body.appendChild(this.overlay);
@@ -112,7 +190,38 @@ export class Modal {
     document.addEventListener('keydown', escHandler);
 
     // 스타일 적용
-    this.applyModalStyles();
+    this.applyModalStyles(modalOptions);
+
+    // 커스터마이징 스타일을 패널에 직접 적용
+    if (modalOptions.width) {
+      panelContainer.style.width = modalOptions.width;
+    }
+    if (modalOptions.maxWidth) {
+      panelContainer.style.maxWidth = modalOptions.maxWidth;
+    }
+    if (modalOptions.height) {
+      panelContainer.style.height = modalOptions.height;
+    }
+    if (modalOptions.maxHeight) {
+      panelContainer.style.maxHeight = modalOptions.maxHeight;
+    }
+    if (modalOptions.backgroundColor) {
+      panelContainer.style.backgroundColor = modalOptions.backgroundColor;
+    }
+    if (modalOptions.textColor) {
+      panelContainer.style.color = modalOptions.textColor;
+    }
+    if (modalOptions.borderRadius) {
+      panelContainer.style.borderRadius = modalOptions.borderRadius;
+    }
+    if (modalOptions.boxShadow) {
+      panelContainer.style.boxShadow = modalOptions.boxShadow;
+    }
+
+    // 오버레이 색상 설정
+    if (modalOptions.overlayColor) {
+      this.overlay.style.backgroundColor = modalOptions.overlayColor;
+    }
   }
 
   close(): void {
@@ -130,21 +239,24 @@ export class Modal {
 
   private copyToClipboard(text: string): void {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => {
-        // 복사 성공 피드백
-        if (this.modalInput) {
-          const originalPlaceholder = this.modalInput.placeholder;
-          this.modalInput.placeholder = '복사되었습니다!';
-          setTimeout(() => {
-            if (this.modalInput) {
-              this.modalInput.placeholder = originalPlaceholder;
-            }
-          }, 1000);
-        }
-      }).catch((err) => {
-        console.error('Failed to copy:', err);
-        this.fallbackCopy(text);
-      });
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          // 복사 성공 피드백
+          if (this.modalInput) {
+            const originalPlaceholder = this.modalInput.placeholder;
+            this.modalInput.placeholder = '복사되었습니다!';
+            setTimeout(() => {
+              if (this.modalInput) {
+                this.modalInput.placeholder = originalPlaceholder;
+              }
+            }, 1000);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to copy:', err);
+          this.fallbackCopy(text);
+        });
     } else {
       this.fallbackCopy(text);
     }
@@ -178,7 +290,7 @@ export class Modal {
 
   private updateModalInput(): void {
     if (!this.modalInput) return;
-    
+
     // target에 입력된 최신 값 가져오기
     let targetValue = '';
     if (typeof this.options.target === 'string') {
@@ -192,17 +304,34 @@ export class Modal {
         targetValue = targetEl.value;
       }
     }
-    
+
     this.modalInput.value = targetValue;
   }
 
-  private applyModalStyles(): void {
-    if (document.getElementById('old-hangul-modal-styles')) {
-      return;
+  private applyModalStyles(modalOptions: any = {}): void {
+    // 기존 스타일이 있으면 제거
+    const existingStyle = document.getElementById('old-hangul-modal-styles');
+    if (existingStyle) {
+      existingStyle.remove();
     }
 
     const style = document.createElement('style');
     style.id = 'old-hangul-modal-styles';
+
+    // 기본값
+    const bgColor = modalOptions.backgroundColor || '#fff';
+    const textColor = modalOptions.textColor || '#1a1a1a';
+    const overlayColor = modalOptions.overlayColor || 'rgba(0, 0, 0, 0.5)';
+    const borderColor = modalOptions.borderColor || '#ddd';
+    const buttonColor = modalOptions.buttonColor || '#fff';
+    const buttonHoverColor = modalOptions.buttonHoverColor || '#f0f0f0';
+    const fontSize = modalOptions.fontSize || '16px';
+    const titleFontSize = modalOptions.titleFontSize || '16px';
+    const buttonFontSize = modalOptions.buttonFontSize || '14px';
+    const inputFontSize = modalOptions.inputFontSize || '16px';
+    const borderRadius = modalOptions.borderRadius || '8px';
+    const padding = modalOptions.padding || '20px';
+
     style.textContent = `
       .old-hangul-modal-overlay {
         position: fixed;
@@ -210,7 +339,7 @@ export class Modal {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
+        background: ${overlayColor};
         display: flex;
         align-items: center;
         justify-content: center;
@@ -220,8 +349,8 @@ export class Modal {
 
       .old-hangul-modal-panel {
         position: relative;
-        background: #fff;
-        border-radius: 8px;
+        background: ${bgColor};
+        border-radius: ${borderRadius};
         width: 95vw;
         max-width: 1200px;
         max-height: 90vh;
@@ -229,13 +358,13 @@ export class Modal {
         display: flex;
         flex-direction: column;
         animation: slideUp 0.3s;
-        color: #1a1a1a;
+        color: ${textColor};
       }
       
       .old-hangul-modal-input-section {
-        padding: 20px;
-        border-bottom: 1px solid #e0e0e0;
-        background: #fff;
+        padding: ${padding};
+        border-bottom: 1px solid ${borderColor};
+        background: ${bgColor};
       }
 
       .old-hangul-modal-input-wrapper {
@@ -247,12 +376,12 @@ export class Modal {
       .old-hangul-modal-input {
         flex: 1;
         padding: 10px 15px;
-        border: 1px solid #ddd;
+        border: 1px solid ${borderColor};
         border-radius: 4px;
-        font-size: 16px;
+        font-size: ${inputFontSize};
         font-family: 'Pretendard', 'YetHangul', '맑은고딕', '나눔고딕', '돋움', dotum, '새굴림', sans-serif;
         background: #f9f9f9;
-        color: #1a1a1a;
+        color: ${textColor};
       }
 
       .old-hangul-modal-input:focus {
@@ -263,19 +392,19 @@ export class Modal {
 
       .old-hangul-modal-copy-btn {
         padding: 10px 20px;
-        border: 1px solid #ddd;
+        border: 1px solid ${borderColor};
         border-radius: 4px;
-        background: #fff;
-        color: #1a1a1a;
+        background: ${buttonColor};
+        color: ${textColor};
         cursor: pointer;
-        font-size: 14px;
+        font-size: ${buttonFontSize};
         font-family: 'Pretendard', 'YetHangul', '맑은고딕', '나눔고딕', '돋움', dotum, '새굴림', sans-serif;
         transition: all 0.2s;
         white-space: nowrap;
       }
 
       .old-hangul-modal-copy-btn:hover {
-        background: #f0f0f0;
+        background: ${buttonHoverColor};
         border-color: #999;
       }
 
@@ -288,29 +417,21 @@ export class Modal {
         max-height: calc(90vh - 120px);
         overflow-y: auto;
         flex: 1;
-        background: #fff;
-        color: #1a1a1a;
+        background: ${bgColor};
+        color: ${textColor};
+        font-size: ${fontSize};
       }
-
-      .old-hangul-modal-close {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 30px;
-        height: 30px;
-        border: none;
-        background: transparent;
-        font-size: 24px;
-        cursor: pointer;
-        color: #999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
+      
+      .old-hangul-modal-panel .old-hangul-section-title {
+        font-size: ${titleFontSize} !important;
+      }
+      
+      .old-hangul-modal-panel .old-hangul-item {
+        font-size: ${fontSize} !important;
       }
 
       .old-hangul-modal-close:hover {
-        background: #f0f0f0;
+        background: ${buttonHoverColor};
         color: #333;
       }
 
@@ -338,4 +459,3 @@ export class Modal {
     this.close();
   }
 }
-
