@@ -1,0 +1,28 @@
+# 소스 파일
+src/
+*.ts
+!*.d.ts
+
+# 개발 파일
+examples/
+node_modules/
+.vscode/
+*.log
+
+# 설정 파일
+tsconfig.json
+rollup.config.js
+.prettierrc
+.prettierignore
+.eslintrc*
+.editorconfig
+
+# 문서 (README는 포함됨)
+DEVELOPMENT.md
+
+# 기타
+.git/
+.gitignore
+*.map
+!dist/**/*.map
+

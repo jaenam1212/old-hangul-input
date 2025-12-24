@@ -1,0 +1,46 @@
+{
+  "name": "old-hangul-input",
+  "version": "0.1.0",
+  "description": "옛 한글 입력기 라이브러리 - 모달, 새창, 인라인에서 옛한글 입력 지원",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "serve": "npx http-server . -a localhost -p 3030 -o examples/index.html",
+    "test": "jest"
+  },
+  "keywords": [
+    "hangul",
+    "old-hangul",
+    "input",
+    "keyboard",
+    "한글",
+    "옛한글"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "@types/node": "^20.10.6",
+    "rollup": "^4.6.1",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {},
+  "files": [
+    "dist"
+  ]
+}
+
