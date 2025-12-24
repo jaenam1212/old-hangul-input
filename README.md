@@ -85,12 +85,14 @@ function MyComponent() {
 #### 모달 모드 (버튼 클릭 시 열기)
 
 ```jsx
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import { OldHangulInput } from 'old-hangul-input';
 
-function MyComponent() {
-  const inputRef = useRef(null);
-  const keyboardRef = useRef(null);
+export default function Home() {
+  const inputRef = useRef < HTMLInputElement > null;
+  const keyboardRef = (useRef < OldHangulInput) | (null > null);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -162,6 +164,16 @@ onUnmounted(() => {
 });
 </script>
 ```
+
+## 폰트 설정
+
+옛한글 입력기가 올바르게 표시되도록 다음 폰트를 사용하시기 바랍니다:
+
+```css
+font-family: 'Pretendard', 'YetHangul', '맑은고딕', '나눔고딕', '돋움', dotum, '새굴림', sans-serif;
+```
+
+라이브러리는 자동으로 위 폰트 스택을 적용하지만, 프로젝트 전체에서 옛한글을 표시하려면 전역 스타일에 위 폰트 설정을 추가하는 것을 권장합니다.
 
 ## API
 

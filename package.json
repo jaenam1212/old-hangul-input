@@ -1,6 +1,6 @@
 {
   "name": "old-hangul-input",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "옛 한글 입력기 라이브러리 - 모달, 새창, 인라인에서 옛한글 입력 지원",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
